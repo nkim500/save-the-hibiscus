@@ -18,22 +18,25 @@ event is already trustworthy. State tracks INCIDENTS (real visits), not frames.
 
 import os
 import sys
-import time
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import ToolContext
 from google.adk.tools.mcp_tool import MCPToolset, StdioConnectionParams
 from mcp import StdioServerParameters
+
+from hibiscus_guard import actuator, store
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # --- Tools -------------------------------------------------------------------
+# State now lives in the SQLite incident store (hibiscus_guard/store.py), not in
+# session memory — so it survives restarts and the daily digest agent can read
+# it. The tools are the agent's read/write window onto that store.
 
 
-def get_incident_history(camera: str, tool_context: ToolContext) -> dict:
-    """Look up recent confirmed squirrel incursions for a camera.
+def get_incident_history(camera: str) -> dict:
+    """Look up recent confirmed squirrel alerts for a camera (read-only).
 
     Call this before deciding urgency, so escalation reflects how persistent the
     squirrel has been in the last hour.
@@ -42,38 +45,43 @@ def get_incident_history(camera: str, tool_context: ToolContext) -> dict:
         camera: The camera id the event came from, e.g. "webcam-1".
 
     Returns:
-        incidents_last_hour: int, confirmed incursions in the past 60 minutes
-            (NOT counting the current event yet).
-        seconds_since_last: float or None, time since the previous incursion.
+        alerts_last_hour: int, confirmed alerts in the past 60 minutes (NOT
+            counting the current event yet).
+        seconds_since_last_alert: float or None, time since the previous alert.
     """
-    now = time.time()
-    timestamps = tool_context.state.get(f"incidents:{camera}", [])
-    recent = [t for t in timestamps if now - t < 3600]
-    last = max(recent) if recent else None
-    return {
-        "incidents_last_hour": len(recent),
-        "seconds_since_last": (now - last) if last is not None else None,
-    }
+    return store.history(camera)
 
 
-def log_incident(camera: str, urgency: str, tool_context: ToolContext) -> dict:
-    """Record that a confirmed incursion happened (local bookkeeping only).
+def record_sighting(
+    camera: str, track_id: int, tier: str, confidence: float, alerted: bool, urgency: str = ""
+) -> dict:
+    """Record this sighting in the durable incident store.
 
-    This does NOT notify anyone — it just updates the agent's memory so future
-    escalation decisions are correct. Sending the actual notification is a
-    separate, governed action: the `send_push` MCP tool.
+    Call this for EVERY event you decide on — both confident incursions you
+    alerted about AND candidates ("maybes") you passed on. This is what lets the
+    daily digest say "I saw N maybes and passed on them".
 
     Args:
-        camera: The camera id the event came from.
-        urgency: One of "low", "medium", "high" — the level you alerted at.
-
-    Returns:
-        status and the running incident count for this camera.
+        camera: The camera id.
+        track_id: The track id from the event.
+        tier: "confident" or "candidate".
+        confidence: The event's confidence (0..1).
+        alerted: True if you sent an alert for this, False if you passed.
+        urgency: "low"/"medium"/"high" if you alerted, else "".
     """
-    timestamps = tool_context.state.get(f"incidents:{camera}", [])
-    timestamps.append(time.time())
-    tool_context.state[f"incidents:{camera}"] = timestamps
-    return {"status": "logged", "urgency": urgency, "incidents_total": len(timestamps)}
+    store.record(camera, track_id, tier, confidence, alerted, urgency or None)
+    return {"status": "recorded", "tier": tier, "alerted": alerted}
+
+
+def sound_alarm(urgency: str) -> dict:
+    """Trigger the local deterrent (make a sound on the laptop) to scare the
+    squirrel in real time. Use for confident incursions, louder for higher
+    urgency.
+
+    Args:
+        urgency: "low", "medium", or "high".
+    """
+    return actuator.buzz(urgency)
 
 
 # The EGRESS lives in a separate MCP server process. The agent launches it over
@@ -98,25 +106,27 @@ root_agent = Agent(
     model=LiteLlm(model="anthropic/claude-sonnet-4-6"),
     description="Decides urgency and alerts when a confirmed squirrel enters the hibiscus zone.",
     instruction=(
-        "You protect a hibiscus from squirrels. The perception layer has ALREADY "
-        "filtered noise, de-duplicated frames, and confirmed zone entry, so every "
-        "event you receive is trustworthy. Do not second-guess confidence.\n\n"
-        "Events look like: 'event=<entered_zone|left_zone> label=squirrel "
-        "camera=<id> zone=hibiscus track_id=<n> confidence=<0..1>'.\n\n"
-        "Rules:\n"
-        "1. If event is 'left_zone', reply 'noted: squirrel left' and call no tool.\n"
-        "2. If event is 'entered_zone', call get_incident_history for that camera.\n"
-        "3. Decide urgency by incidents_last_hour:\n"
-        "     0  -> 'low'\n"
-        "     1  -> 'medium'\n"
-        "     2+ -> 'high'\n"
-        "4. Call send_alert to notify the household. ALWAYS pass recipient="
-        "'household' (the only allowlisted recipient). Use a short title like "
-        "'Squirrel on the hibiscus' and a message noting how many times it's "
-        "struck this hour. Pass the urgency as the priority. If send_alert "
-        "returns status 'blocked', report the reason and do not retry.\n"
-        "5. Then call log_incident with the same camera and urgency to record it.\n"
+        "You protect a hibiscus from squirrels. Perception has ALREADY filtered "
+        "noise, de-duplicated frames, and confirmed zone entry, so every event is "
+        "trustworthy. Do not second-guess confidence.\n\n"
+        "Events look like: 'event=<entered_zone|left_zone> tier=<confident|candidate> "
+        "label=squirrel camera=<id> zone=hibiscus track_id=<n> confidence=<0..1>'.\n\n"
+        "Handle each event:\n"
+        "A) event 'left_zone' -> reply 'noted: squirrel left'. No tools.\n\n"
+        "B) event 'entered_zone' with tier 'candidate' (a MAYBE) -> do NOT alert "
+        "or sound the alarm. Just call record_sighting with alerted=false, "
+        "urgency='' (so the daily digest knows you saw it and passed). Reply "
+        "'logged maybe, passed'.\n\n"
+        "C) event 'entered_zone' with tier 'confident' -> act:\n"
+        "   1. call get_incident_history for the camera.\n"
+        "   2. pick urgency by alerts_last_hour: 0->'low', 1->'medium', 2+->'high'.\n"
+        "   3. call send_alert (recipient ALWAYS 'household', the only allowlisted "
+        "one; title like 'Squirrel on the hibiscus'; message notes how many times "
+        "it struck this hour; priority = urgency). If it returns 'blocked', report "
+        "the reason and stop.\n"
+        "   4. if urgency is 'high', call sound_alarm to scare it off.\n"
+        "   5. call record_sighting with alerted=true and the chosen urgency.\n\n"
         "Be terse. You are a sensor's brain, not a chatbot."
     ),
-    tools=[get_incident_history, log_incident, alert_egress],
+    tools=[get_incident_history, record_sighting, sound_alarm, alert_egress],
 )
