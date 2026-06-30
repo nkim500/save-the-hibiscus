@@ -37,8 +37,7 @@ mcp = FastMCP("hibiscus-alerts")
 
 
 @mcp.tool()
-def send_alert(recipient: str, title: str, message: str,
-               priority: str = "medium") -> dict:
+def send_alert(recipient: str, title: str, message: str, priority: str = "medium") -> dict:
     """Notify an allowlisted recipient about the hibiscus.
 
     Args:
@@ -54,16 +53,24 @@ def send_alert(recipient: str, title: str, message: str,
     """
     channel = get_channel(_CHANNEL_NAME)
     try:
-        address = resolve_recipient(recipient, channel.name)   # 1. allowlist
-        _rate_limiter.check_and_record(recipient)              # 2. rate limit
+        address = resolve_recipient(recipient, channel.name)  # 1. allowlist
+        _rate_limiter.check_and_record(recipient)  # 2. rate limit
     except PolicyError as e:
-        audit({"event": "blocked", "recipient": recipient,
-               "channel": channel.name, "reason": str(e)})
+        audit(
+            {"event": "blocked", "recipient": recipient, "channel": channel.name, "reason": str(e)}
+        )
         return {"status": "blocked", "reason": str(e)}
 
-    result = channel.send(address, title, message, priority)   # 3. send
-    audit({"event": "sent", "recipient": recipient, "channel": channel.name,
-           "priority": priority, "title": title})              # 4. audit
+    result = channel.send(address, title, message, priority)  # 3. send
+    audit(
+        {
+            "event": "sent",
+            "recipient": recipient,
+            "channel": channel.name,
+            "priority": priority,
+            "title": title,
+        }
+    )  # 4. audit
     return {"status": "sent", **result}
 
 

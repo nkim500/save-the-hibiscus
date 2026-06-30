@@ -35,13 +35,51 @@ def demo_afternoon() -> StubEventSource:
     multi-second visit into a single track. The agent sees three real incursions
     (with one departure in between) — and should escalate low -> medium -> high.
     """
-    return StubEventSource([
-        (0.5, TrackEvent("entered_zone", track_id=7,  label="squirrel",
-                         camera="webcam-1", zone="hibiscus", confidence=0.93)),
-        (1.0, TrackEvent("left_zone",    track_id=7,  label="squirrel",
-                         camera="webcam-1", zone="hibiscus", confidence=0.93)),
-        (3.0, TrackEvent("entered_zone", track_id=12, label="squirrel",
-                         camera="webcam-1", zone="hibiscus", confidence=0.88)),
-        (3.0, TrackEvent("entered_zone", track_id=15, label="squirrel",
-                         camera="webcam-1", zone="hibiscus", confidence=0.97)),
-    ])
+    return StubEventSource(
+        [
+            (
+                0.5,
+                TrackEvent(
+                    "entered_zone",
+                    track_id=7,
+                    label="squirrel",
+                    camera="webcam-1",
+                    zone="hibiscus",
+                    confidence=0.93,
+                ),
+            ),
+            (
+                1.0,
+                TrackEvent(
+                    "left_zone",
+                    track_id=7,
+                    label="squirrel",
+                    camera="webcam-1",
+                    zone="hibiscus",
+                    confidence=0.93,
+                ),
+            ),
+            (
+                3.0,
+                TrackEvent(
+                    "entered_zone",
+                    track_id=12,
+                    label="squirrel",
+                    camera="webcam-1",
+                    zone="hibiscus",
+                    confidence=0.88,
+                ),
+            ),
+            (
+                3.0,
+                TrackEvent(
+                    "entered_zone",
+                    track_id=15,
+                    label="squirrel",
+                    camera="webcam-1",
+                    zone="hibiscus",
+                    confidence=0.97,
+                ),
+            ),
+        ]
+    )

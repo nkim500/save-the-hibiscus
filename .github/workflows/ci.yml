@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies (locked)
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uvx ruff check .
+
+      - name: Ruff format check
+        run: uvx ruff format --check .
+
+      - name: Import smoke test
+        # Fails the build if any module is broken. We stub the API key so the
+        # LiteLlm model object can be constructed without real credentials.
+        env:
+          ANTHROPIC_API_KEY: sk-ant-ci-placeholder
+        run: |
+          uv run python -c "import hibiscus_guard.agent; import hibiscus_guard.alert_mcp_server; import hibiscus_guard.perception; import hibiscus_guard.egress; print('all modules import OK')"

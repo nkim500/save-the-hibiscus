@@ -1,7 +1,7 @@
 [project]
-name = "adk-weather"
+name = "save-the-hibiscus"
 version = "0.1.0"
-description = "Add your description here"
+description = "Squirrel-detection ADK agent for learning agent governance"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,3 +9,10 @@ dependencies = [
     "litellm>=1.83.7,<=1.83.14",
     "mcp>=1.28.1",
 ]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+# ADK discovers the agent by importing the submodule for its side effect.
+"**/__init__.py" = ["F401"]

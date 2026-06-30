@@ -1,0 +1,28 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "27 3 * * 1"  # weekly, Mondays — catches newly-published CVE queries
+
+permissions:
+  contents: read
+  security-events: write  # required to upload results to the Security tab
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended  # broader than the default rule set
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3

@@ -31,6 +31,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # --- Tools -------------------------------------------------------------------
 
+
 def get_incident_history(camera: str, tool_context: ToolContext) -> dict:
     """Look up recent confirmed squirrel incursions for a camera.
 
@@ -72,8 +73,7 @@ def log_incident(camera: str, urgency: str, tool_context: ToolContext) -> dict:
     timestamps = tool_context.state.get(f"incidents:{camera}", [])
     timestamps.append(time.time())
     tool_context.state[f"incidents:{camera}"] = timestamps
-    return {"status": "logged", "urgency": urgency,
-            "incidents_total": len(timestamps)}
+    return {"status": "logged", "urgency": urgency, "incidents_total": len(timestamps)}
 
 
 # The EGRESS lives in a separate MCP server process. The agent launches it over

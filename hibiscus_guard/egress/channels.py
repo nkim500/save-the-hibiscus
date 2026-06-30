@@ -20,11 +20,11 @@ import httpx
 class Channel(Protocol):
     name: str
 
-    def send(self, address: str, title: str, message: str, priority: str) -> dict:
-        ...
+    def send(self, address: str, title: str, message: str, priority: str) -> dict: ...
 
 
 # --- ntfy (default; no secret — a public topic) ------------------------------
+
 
 class NtfyChannel:
     name = "ntfy"
@@ -50,6 +50,7 @@ class NtfyChannel:
 
 
 # --- Telegram (real secret: a bot token) -------------------------------------
+
 
 class TelegramChannel:
     name = "telegram"
@@ -82,6 +83,7 @@ class TelegramChannel:
 
 
 # --- WhatsApp (scaffolded — Meta Cloud API; activate when you have creds) -----
+
 
 class WhatsAppChannel:
     name = "whatsapp"

@@ -1,42 +1,41 @@
-# adk-weather
+# save-the-hibiscus
 
-A tiny [Google ADK](https://google.github.io/adk-docs/) project to get acquainted
-with agent building in Python. One agent, one tool, running on a Claude model
-via LiteLLM (no Google API key needed).
+A small **Google ADK** project for learning agent development + **agent governance**.
+A camera detects squirrels approaching a hibiscus; an AI agent judges each
+sighting and sends a phone alert through a **governed egress** (the agent never
+holds secrets or picks raw recipients).
 
-## Setup
-
-Add your API key in [weather_agent/.env](weather_agent/.env):
 ```
-ANTHROPIC_API_KEY=sk-ant-...
+perception (YOLO+ByteTrack, or stub)  ──►  ambient agent (judges + escalates)  ──►  MCP egress (ntfy / Telegram)
+   confidence + tracking + zone gating       urgency, dedupe, incident count        allowlist · rate limit · audit
 ```
 
 ## Run it
 
-**In the terminal** (chat in your shell):
 ```bash
-uv run adk run weather_agent
+uv sync
+uv run python -m hibiscus_guard.simulate   # replays scripted squirrel events
 ```
 
-**In the browser** (ADK's dev UI — shows the tool calls visually):
-```bash
-uv run adk web
-```
-Then open the printed URL and pick `weather_agent`.
+## Environment variables
 
-Try asking: *"What's the weather in Seoul?"*
+Put these in `hibiscus_guard/.env` (git-ignored):
 
-## What's where
+| Var | Needed for | Notes |
+|-----|-----------|-------|
+| `ANTHROPIC_API_KEY` | always | the agent's model (Claude via LiteLLM) |
+| `ALERT_CHANNEL` | always | `ntfy` (default), `telegram`, or `whatsapp` |
+| `NTFY_TOPIC` | ntfy channel | your unique, unguessable topic name |
+| `TELEGRAM_BOT_TOKEN` | telegram channel | the bot's secret (see below) |
+| `TELEGRAM_CHAT_ID` | telegram channel | where alerts land (your user id) |
+| `RATE_LIMIT_PER_HOUR` | optional | max alerts per recipient/hour (default 8) |
 
-| File | What it is |
-|------|------------|
-| [weather_agent/agent.py](weather_agent/agent.py) | The agent + its `get_weather` tool. Start here. |
-| [weather_agent/__init__.py](weather_agent/__init__.py) | Makes ADK discover the agent. |
-| [weather_agent/.env](weather_agent/.env) | Your API key (git-ignored). |
+`WHATSAPP_*` vars exist but the channel is scaffolded only (needs Meta onboarding).
 
-## Next steps to learn ADK
+## Telegram setup (2 minutes, free)
 
-- Make `get_weather` call a real weather API instead of the fake dict.
-- Add a second tool and watch the model choose between them.
-- Give the agent `sub_agents=[...]` to try multi-agent delegation.
-- Switch the model to `"openai/gpt-4o"` to see LiteLLM swap providers.
+1. In Telegram, message **@BotFather** → `/newbot` → follow prompts → copy the **token**.
+2. Send your new bot any message (so it's allowed to DM you).
+3. Message **@userinfobot** → it replies with your numeric **id** = your `TELEGRAM_CHAT_ID`.
+4. In `.env`: set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and `ALERT_CHANNEL=telegram`.
+5. Re-run the simulation — alerts now arrive in Telegram.

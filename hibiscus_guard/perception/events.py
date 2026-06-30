@@ -19,12 +19,12 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TrackEvent:
-    event_type: str          # "entered_zone" | "left_zone"
-    track_id: int            # stable identity from the tracker (e.g. ByteTrack)
-    label: str               # "squirrel"
-    camera: str              # which source, e.g. "webcam-1" — supports multi-cam later
-    zone: str                # the zone crossed, e.g. "hibiscus"
-    confidence: float        # peak/smoothed track confidence from perception
+    event_type: str  # "entered_zone" | "left_zone"
+    track_id: int  # stable identity from the tracker (e.g. ByteTrack)
+    label: str  # "squirrel"
+    camera: str  # which source, e.g. "webcam-1" — supports multi-cam later
+    zone: str  # the zone crossed, e.g. "hibiscus"
+    confidence: float  # peak/smoothed track confidence from perception
     timestamp: float = field(default_factory=time.time)
 
     def to_prompt(self) -> str:

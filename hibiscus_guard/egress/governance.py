@@ -43,9 +43,7 @@ class PolicyError(Exception):
 def resolve_recipient(key: str, channel_name: str) -> str:
     """Map a safe recipient key + channel to a concrete address, or reject."""
     if key not in _RECIPIENTS:
-        raise PolicyError(
-            f"Recipient '{key}' is not allowlisted. Allowed: {list(_RECIPIENTS)}"
-        )
+        raise PolicyError(f"Recipient '{key}' is not allowlisted. Allowed: {list(_RECIPIENTS)}")
     env_var = _RECIPIENTS[key].get(channel_name)
     address = os.environ.get(env_var) if env_var else None
     if not address:
@@ -70,9 +68,7 @@ class RateLimiter:
         while window and now - window[0] > 3600:
             window.popleft()
         if len(window) >= self._per_hour:
-            raise PolicyError(
-                f"Rate limit hit for '{key}': {self._per_hour}/hour. Try later."
-            )
+            raise PolicyError(f"Rate limit hit for '{key}': {self._per_hour}/hour. Try later.")
         window.append(now)
 
 
