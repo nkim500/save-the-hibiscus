@@ -21,3 +21,7 @@ GOVERNANCE_NOTES.md
 
 # local Claude Code project instructions
 CLAUDE.md
+
+# local SQLite incident store
+*.db
+*.db-journal

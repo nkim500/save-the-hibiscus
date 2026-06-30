@@ -1,9 +1,6 @@
 # save-the-hibiscus
 
-A small **Google ADK** project for learning agent development + **agent governance**.
-A camera detects squirrels approaching a hibiscus; an AI agent judges each
-sighting and sends a phone alert through a **governed egress** (the agent never
-holds secrets or picks raw recipients).
+Detect and deter squirrels from a hibiscus.
 
 ```
 perception (YOLO+ByteTrack, or stub)  ──►  ambient agent (judges + escalates)  ──►  MCP egress (ntfy / Telegram)
@@ -14,7 +11,7 @@ perception (YOLO+ByteTrack, or stub)  ──►  ambient agent (judges + escalat
 
 ```bash
 uv sync
-uv run python -m hibiscus_guard.simulate   # replays scripted squirrel events
+uv run python -m hibiscus_guard.ambient   # replays scripted squirrel events
 ```
 
 ## Environment variables
