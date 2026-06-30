@@ -9,6 +9,15 @@ updates:
     groups:
       python-deps:
         patterns: ["*"]
+    ignore:
+      # litellm's compatible range is dictated by google-adk (we pin it to ADK's
+      # tested range). Suppress routine minor/major bump PRs. NOTE: ignoring by
+      # update-type (not by version) leaves SECURITY updates intact — a CVE in
+      # our pinned version will still open a PR / fire an alert.
+      - dependency-name: "litellm"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
   # GitHub Actions versions used in our workflows
   - package-ecosystem: "github-actions"
