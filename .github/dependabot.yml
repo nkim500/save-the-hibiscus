@@ -1,26 +1,19 @@
 version: 2
+# Security-only mode.
+#
+# open-pull-requests-limit: 0 disables routine "a newer version exists" PRs,
+# while leaving Dependabot SECURITY updates (CVE fixes) and alerts fully active.
+# So PRs now appear ONLY when a dependency has a known vulnerability — never for
+# routine version bumps.
 updates:
-  # Python dependencies (pyproject.toml / uv.lock)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      python-deps:
-        patterns: ["*"]
-    ignore:
-      # litellm's compatible range is dictated by google-adk (we pin it to ADK's
-      # tested range). Suppress routine minor/major bump PRs. NOTE: ignoring by
-      # update-type (not by version) leaves SECURITY updates intact — a CVE in
-      # our pinned version will still open a PR / fire an alert.
-      - dependency-name: "litellm"
-        update-types:
-          - "version-update:semver-minor"
-          - "version-update:semver-major"
+    open-pull-requests-limit: 0
 
-  # GitHub Actions versions used in our workflows
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 0
