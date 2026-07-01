@@ -1,0 +1,11 @@
+# Agent Gateway in EGRESS mode ("Agent-to-Anywhere").
+# Default-deny: once an agent is bound, it can ONLY reach endpoints registered
+# in the referenced registry. This is the platform-enforced version of our local
+# egress allowlist (hibiscus_guard/egress/governance.py).
+name: hibiscus-gateway
+protocols:
+  - MCP
+googleManaged:
+  governedAccessPath: AGENT_TO_ANYWHERE
+registries:
+  - //agentregistry.googleapis.com/projects/save-the-hibiscus/locations/us-central1
