@@ -18,6 +18,8 @@ wheels/
 
 # private notes (kept local)
 GOVERNANCE_NOTES.md
+GCP_AGENT_GOVERNANCE.md
+HANDOFF.md
 
 # local Claude Code project instructions
 CLAUDE.md

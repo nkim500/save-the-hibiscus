@@ -1,0 +1,13 @@
+# Authorization policy: attach the DRY_RUN IAP authz extension to the gateway.
+# With the gateway in AGENT_TO_ANYWHERE mode, this is what evaluates each egress
+# attempt against the registered-endpoint allowlist (logging only, in DRY_RUN).
+name: hibiscus-authz-policy
+target:
+  resources:
+    - "projects/save-the-hibiscus/locations/us-central1/agentGateways/hibiscus-gateway"
+policyProfile: REQUEST_AUTHZ
+action: CUSTOM
+customProvider:
+  authzExtension:
+    resources:
+      - "projects/save-the-hibiscus/locations/us-central1/authzExtensions/hibiscus-iap-authz"
