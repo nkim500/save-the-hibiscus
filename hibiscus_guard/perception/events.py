@@ -11,6 +11,12 @@ track identity, and the zone geometry has confirmed the animal is on/near the
 hibiscus. So an "entered_zone" event means "a confirmed squirrel just entered
 the hibiscus zone" — not "a pixel changed." That is why the agent no longer
 needs to threshold or debounce.
+
+The `tier` field carries perception's CONFIDENCE judgment as two bands:
+  * "confident" — clearly a squirrel; worth alerting.
+  * "candidate" — a "maybe": above noise, below the alert bar. The agent should
+    LOG it (so the daily digest can say "I saw a maybe and passed") but NOT
+    alert. This is how the two-tier idea reaches the agent.
 """
 
 import time
@@ -25,11 +31,13 @@ class TrackEvent:
     camera: str  # which source, e.g. "webcam-1" — supports multi-cam later
     zone: str  # the zone crossed, e.g. "hibiscus"
     confidence: float  # peak/smoothed track confidence from perception
+    tier: str = "confident"  # "confident" | "candidate" (a "maybe")
     timestamp: float = field(default_factory=time.time)
 
     def to_prompt(self) -> str:
         """Render the event as the line the agent reads."""
         return (
-            f"event={self.event_type} label={self.label} camera={self.camera} "
-            f"zone={self.zone} track_id={self.track_id} confidence={self.confidence:.2f}"
+            f"event={self.event_type} tier={self.tier} label={self.label} "
+            f"camera={self.camera} zone={self.zone} track_id={self.track_id} "
+            f"confidence={self.confidence:.2f}"
         )

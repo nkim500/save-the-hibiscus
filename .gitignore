@@ -26,3 +26,7 @@ CLAUDE.md
 /data/
 detector/*.joblib
 /samples/
+
+# local SQLite incident store
+*.db
+*.db-journal

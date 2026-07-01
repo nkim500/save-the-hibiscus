@@ -27,59 +27,34 @@ class StubEventSource(EventSource):
             yield event
 
 
-def demo_afternoon() -> StubEventSource:
-    """One squirrel's escalating campaign against the hibiscus.
+def _ev(event_type: str, track_id: int, confidence: float, tier: str = "confident") -> TrackEvent:
+    return TrackEvent(
+        event_type=event_type,
+        track_id=track_id,
+        label="squirrel",
+        camera="webcam-1",
+        zone="hibiscus",
+        confidence=confidence,
+        tier=tier,
+    )
 
-    Note what is NOT here: the wind-blown leaf and the low-confidence blur. The
-    perception layer already discarded those, and ByteTrack collapsed each
-    multi-second visit into a single track. The agent sees three real incursions
-    (with one departure in between) — and should escalate low -> medium -> high.
+
+def demo_afternoon() -> StubEventSource:
+    """One squirrel's escalating campaign against the hibiscus, plus a "maybe".
+
+    Note what is NOT here: the wind-blown leaf and the low-confidence blur — those
+    fell below even the 'candidate' bar and perception dropped them. What reaches
+    the agent:
+      * a 'candidate' (a maybe) -> the agent should LOG and pass, no alert.
+      * three 'confident' incursions -> escalate low -> medium -> high, and the
+        high one also fires the local alarm.
     """
     return StubEventSource(
         [
-            (
-                0.5,
-                TrackEvent(
-                    "entered_zone",
-                    track_id=7,
-                    label="squirrel",
-                    camera="webcam-1",
-                    zone="hibiscus",
-                    confidence=0.93,
-                ),
-            ),
-            (
-                1.0,
-                TrackEvent(
-                    "left_zone",
-                    track_id=7,
-                    label="squirrel",
-                    camera="webcam-1",
-                    zone="hibiscus",
-                    confidence=0.93,
-                ),
-            ),
-            (
-                3.0,
-                TrackEvent(
-                    "entered_zone",
-                    track_id=12,
-                    label="squirrel",
-                    camera="webcam-1",
-                    zone="hibiscus",
-                    confidence=0.88,
-                ),
-            ),
-            (
-                3.0,
-                TrackEvent(
-                    "entered_zone",
-                    track_id=15,
-                    label="squirrel",
-                    camera="webcam-1",
-                    zone="hibiscus",
-                    confidence=0.97,
-                ),
-            ),
+            (0.5, _ev("entered_zone", track_id=5, confidence=0.55, tier="candidate")),
+            (2.0, _ev("entered_zone", track_id=7, confidence=0.93)),
+            (1.0, _ev("left_zone", track_id=7, confidence=0.93)),
+            (3.0, _ev("entered_zone", track_id=12, confidence=0.88)),
+            (3.0, _ev("entered_zone", track_id=15, confidence=0.97)),
         ]
     )
