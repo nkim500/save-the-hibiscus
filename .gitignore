@@ -22,6 +22,11 @@ GOVERNANCE_NOTES.md
 # local Claude Code project instructions
 CLAUDE.md
 
+# detector dataset + trained artifacts
+/data/
+detector/*.joblib
+/samples/
+
 # local SQLite incident store
 *.db
 *.db-journal
