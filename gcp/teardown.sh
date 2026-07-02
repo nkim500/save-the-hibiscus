@@ -15,6 +15,8 @@ gcloud agent-registry services delete anthropic-api --location=$LOC --project=$P
 gcloud agent-registry services delete hibiscus-copilot --location=$LOC --project=$PROJECT --quiet 2>&1 | tail -1
 echo "== agent gateway =="
 gcloud network-services agent-gateways delete hibiscus-gateway --location=$LOC --project=$PROJECT --quiet 2>&1 | tail -1
+echo "== capture candidate bucket =="
+gcloud storage rm -r gs://save-the-hibiscus-captures --project=$PROJECT --quiet 2>&1 | tail -1
 echo "== reasoning engine (Agent Runtime) =="
 TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null)
 curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \

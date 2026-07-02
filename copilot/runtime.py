@@ -18,6 +18,7 @@ import sys
 import time
 
 from copilot import project as proj
+from hibiscus_guard.perception.cameras import sanitize_spec, validate_spec
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODULE = "hibiscus_guard.ambient"
@@ -50,8 +51,10 @@ def deploy(project: dict, camera: str = "0") -> dict:
     if not os.path.isfile(model_path):
         return {"ok": False, "error": f"model file missing: {model_path}"}
     camera = str(camera)
-    if not (camera.isdigit() or os.path.isdir(camera)):
-        return {"ok": False, "error": "camera must be a webcam index or an existing directory"}
+    try:
+        validate_spec(camera)
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
 
     env = {
         **os.environ,
@@ -72,7 +75,13 @@ def deploy(project: dict, camera: str = "0") -> dict:
             start_new_session=True,  # survives the copilot exiting
         )
     project["status"] = "live"
-    project["surveillance"] = {"pid": child.pid, "camera": camera, "started": time.time()}
+    # stored state (and anything echoed back to the agent) gets the
+    # credential-free form; only the child's env holds the full spec
+    project["surveillance"] = {
+        "pid": child.pid,
+        "camera": sanitize_spec(camera),
+        "started": time.time(),
+    }
     proj.save(project)
     return {"ok": True, "pid": child.pid, "log": _log_path(project)}
 

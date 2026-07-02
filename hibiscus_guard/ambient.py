@@ -20,7 +20,9 @@ deploy this process without editing code):
   HIBISCUS_SOURCE=detector   the trained detector over a live camera; needs:
       DETECTOR_MODEL   path to the trained .joblib bundle
       TARGET_LABEL     what the detector was trained on, e.g. "squirrel"
-      CAMERA           webcam index ("0") or a directory to watch for images
+      CAMERA           camera spec: webcam index ("0" / "webcam:0"), a
+                       directory to watch ("folder:/path" or a bare path),
+                       an "rtsp://…" stream, or a "file:clip.mp4" replay
       ZONE             zone name for events (default "hibiscus")
       POLL_SECONDS     seconds between frames (default "1.0")
       CONFIDENT_T / CANDIDATE_T   tier thresholds (default 0.8 / 0.6)
@@ -40,8 +42,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 from hibiscus_guard.agent import root_agent  # noqa: E402
 from hibiscus_guard.perception import (  # noqa: E402
     DetectorEventSource,
-    FolderSource,
-    WebcamSource,
+    camera_from_spec,
     demo_afternoon,
 )
 
@@ -60,11 +61,10 @@ def source_from_env():
     model = os.environ.get("DETECTOR_MODEL", "")
     if not os.path.isfile(model):
         raise SystemExit(f"DETECTOR_MODEL={model!r} is not a file")
-    camera_cfg = os.environ.get("CAMERA", "0")
-    if os.path.isdir(camera_cfg):
-        camera, camera_name = FolderSource(camera_cfg), f"folder:{os.path.basename(camera_cfg)}"
-    else:
-        camera, camera_name = WebcamSource(int(camera_cfg)), f"webcam-{camera_cfg}"
+    try:
+        camera, camera_name = camera_from_spec(os.environ.get("CAMERA", "0"))
+    except ValueError as e:
+        raise SystemExit(str(e)) from e
     return DetectorEventSource(
         camera=camera,
         model_path=model,
