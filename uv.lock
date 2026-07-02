@@ -2456,6 +2456,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "google-adk" },
     { name = "google-cloud-aiplatform" },
+    { name = "google-cloud-storage" },
     { name = "litellm" },
     { name = "mcp" },
 ]
@@ -2475,6 +2476,7 @@ detector = [
 requires-dist = [
     { name = "google-adk", specifier = ">=2.3.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.159.0" },
+    { name = "google-cloud-storage", specifier = ">=2.16.0" },
     { name = "litellm", specifier = ">=1.83.7,<=1.83.14" },
     { name = "mcp", specifier = ">=1.28.1" },
 ]

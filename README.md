@@ -33,6 +33,24 @@ dataset, trained model, project state, surveillance log. The deployed runtime
 is `hibiscus_guard.ambient` with `HIBISCUS_SOURCE=detector` (see its docstring
 for the env contract) — same governed egress as the demo.
 
+Cameras are config-addressable everywhere a camera is named (capture,
+surveillance, the `CAMERA` env var): `webcam:0` (or just `0`),
+`folder:/path`, `rtsp://user:pw@host/stream`, `file:clip.mp4`.
+
+## Stay and capture — when the target won't pose
+
+Squirrels don't show up on demand, so the copilot can `start_capture`: a
+daemon that watches the camera continuously and keeps only interesting
+frames — motion against a rolling background before a model exists, the
+classifier's *uncertain band* once one does (the model harvests its own hard
+examples). Ask the copilot to `review_captures` and it walks you through each
+candidate ("is this your squirrel?"); a yes files it as a positive, a no
+becomes a hard negative, then retrain. If `CAPTURES_BUCKET` is set, kept
+frames also upload to that GCS bucket (ADC/IAM auth) so review works away
+from the capture machine — uploads are governed egress: fixed bucket,
+validated object names, hourly budget, every attempt audited in
+`data/copilot/<target>/gcs_audit.jsonl`.
+
 ## Environment variables
 
 Put these in `hibiscus_guard/.env` (git-ignored):
@@ -45,6 +63,7 @@ Put these in `hibiscus_guard/.env` (git-ignored):
 | `TELEGRAM_BOT_TOKEN` | telegram channel | the bot's secret (see below) |
 | `TELEGRAM_CHAT_ID` | telegram channel | where alerts land (your user id) |
 | `RATE_LIMIT_PER_HOUR` | optional | max alerts per recipient/hour (default 8) |
+| `CAPTURES_BUCKET` | optional | GCS bucket for capture candidates (e.g. `save-the-hibiscus-captures`) |
 
 `WHATSAPP_*` vars exist but the channel is scaffolded only (needs Meta onboarding).
 
