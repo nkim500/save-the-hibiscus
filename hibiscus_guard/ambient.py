@@ -9,12 +9,23 @@ This is the heart of the "ambient agent" pattern:
     the store (hibiscus_guard/store.py), not in memory — so a restart, or the
     separate daily-digest process, loses nothing.
 
-With the stub source the stream is finite and we exit at the end. With a real
-YoloEventSource over a webcam, `source.events()` simply never stops — the same
-loop becomes a true always-on guard. That ONE line is the only thing that
-changes to go live.
+With the stub source the stream is finite and we exit at the end. With the
+trained DetectorEventSource over a webcam, `source.events()` simply never
+stops — the same loop becomes a true always-on guard.
 
-Run it:  uv run python -m hibiscus_guard.ambient
+Which source runs is chosen by environment (so the copilot — or you — can
+deploy this process without editing code):
+
+  HIBISCUS_SOURCE=stub       (default) the scripted demo afternoon
+  HIBISCUS_SOURCE=detector   the trained detector over a live camera; needs:
+      DETECTOR_MODEL   path to the trained .joblib bundle
+      TARGET_LABEL     what the detector was trained on, e.g. "squirrel"
+      CAMERA           webcam index ("0") or a directory to watch for images
+      ZONE             zone name for events (default "hibiscus")
+      POLL_SECONDS     seconds between frames (default "1.0")
+      CONFIDENT_T / CANDIDATE_T   tier thresholds (default 0.8 / 0.6)
+
+Run it:  uv run --group detector python -m hibiscus_guard.ambient
 """
 
 import asyncio
@@ -27,10 +38,43 @@ from google.genai import types
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from hibiscus_guard.agent import root_agent  # noqa: E402
-from hibiscus_guard.perception import demo_afternoon  # noqa: E402
+from hibiscus_guard.perception import (  # noqa: E402
+    DetectorEventSource,
+    FolderSource,
+    WebcamSource,
+    demo_afternoon,
+)
 
 APP = "hibiscus_guard"
 USER = "nick"
+
+
+def source_from_env():
+    """Build the EventSource the environment asks for (default: the stub)."""
+    kind = os.environ.get("HIBISCUS_SOURCE", "stub")
+    if kind == "stub":
+        return demo_afternoon()
+    if kind != "detector":
+        raise SystemExit(f"unknown HIBISCUS_SOURCE={kind!r} (want 'stub' or 'detector')")
+
+    model = os.environ.get("DETECTOR_MODEL", "")
+    if not os.path.isfile(model):
+        raise SystemExit(f"DETECTOR_MODEL={model!r} is not a file")
+    camera_cfg = os.environ.get("CAMERA", "0")
+    if os.path.isdir(camera_cfg):
+        camera, camera_name = FolderSource(camera_cfg), f"folder:{os.path.basename(camera_cfg)}"
+    else:
+        camera, camera_name = WebcamSource(int(camera_cfg)), f"webcam-{camera_cfg}"
+    return DetectorEventSource(
+        camera=camera,
+        model_path=model,
+        label=os.environ.get("TARGET_LABEL", "target"),
+        camera_name=camera_name,
+        zone=os.environ.get("ZONE", "hibiscus"),
+        confident_threshold=float(os.environ.get("CONFIDENT_T", "0.8")),
+        candidate_threshold=float(os.environ.get("CANDIDATE_T", "0.6")),
+        interval_seconds=float(os.environ.get("POLL_SECONDS", "1.0")),
+    )
 
 
 async def handle_event(runner, session_id, event):
@@ -51,9 +95,9 @@ async def main():
     runner = InMemoryRunner(agent=root_agent, app_name=APP)
     session = await runner.session_service.create_session(app_name=APP, user_id=USER)
 
-    # Swap this single line for a real YoloEventSource(...) to go live; the loop
+    # Stub or trained detector — chosen by env (see module docstring); the loop
     # below — the ambient pattern — does not change.
-    source = demo_afternoon()
+    source = source_from_env()
 
     print("🌺 Hibiscus Guard is watching... (Ctrl-C to stop)\n")
     async for event in source.events():

@@ -1,10 +1,10 @@
 # save-the-hibiscus
 
-Detect and deter squirrels from a hibiscus.
+Detect and deter squirrels from a hibiscus — or train a detector for anything else.
 
 ```
-perception (YOLO+ByteTrack, or stub)  ──►  ambient agent (judges + escalates)  ──►  MCP egress (ntfy / Telegram)
-   confidence + tracking + zone gating       urgency, dedupe, incident count        allowlist · rate limit · audit
+perception (trained detector, or stub)  ──►  ambient agent (judges + escalates)  ──►  MCP egress (ntfy / Telegram)
+   confidence + tracking + zone gating        urgency, dedupe, incident count         allowlist · rate limit · audit
 ```
 
 ## Run it
@@ -13,6 +13,25 @@ perception (YOLO+ByteTrack, or stub)  ──►  ambient agent (judges + escalat
 uv sync
 uv run python -m hibiscus_guard.ambient   # replays scripted squirrel events
 ```
+
+## The copilot — train your own detector by chatting
+
+The control plane: a chat agent that walks you from "I want to detect X" to a
+live surveillance agent. It helps you collect example images (webcam capture
+of your own scene, imports, CC0 web images), dispatches a training job
+(DINOv2 embeddings + small classifier head, CPU, ~a minute), reports holdout
+accuracy, and — after you say "go live" — launches the ambient runtime on the
+trained model.
+
+```bash
+uv sync --group detector
+uv run --group detector adk run copilot
+```
+
+Everything it builds lives under `data/copilot/<target>/` (git-ignored):
+dataset, trained model, project state, surveillance log. The deployed runtime
+is `hibiscus_guard.ambient` with `HIBISCUS_SOURCE=detector` (see its docstring
+for the env contract) — same governed egress as the demo.
 
 ## Environment variables
 
