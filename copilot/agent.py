@@ -24,6 +24,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The model key lives in the runtime's .env (never in this agent's context).
 load_dotenv(os.path.join(_REPO_ROOT, "hibiscus_guard", ".env"))
 
+from copilot import capture as cap  # noqa: E402
 from copilot import project as proj  # noqa: E402
 from copilot import runtime, training  # noqa: E402
 
@@ -123,6 +124,80 @@ def fetch_web_examples(query: str, kind: str, n: int = 10) -> dict:
         return {"error": str(e)}
 
 
+def start_capture(camera: str = "0") -> dict:
+    """Start the stay-and-capture daemon: watch the camera, keep interesting frames.
+
+    Use this when the target won't pose on demand (a squirrel). Before a model
+    is trained it keeps frames with motion; once a model exists it keeps the
+    frames the classifier is UNSURE about — its own hard examples. Kept frames
+    are queued for the user to review (review_captures / label_capture).
+
+    Args:
+        camera: Camera spec — 'webcam:0' (or '0'), 'folder:/path',
+            'rtsp://…', or 'file:clip.mp4'.
+    """
+    p = proj.load()
+    if p is None:
+        return {"error": "no project — use define_target first"}
+    return cap.start(p, camera)
+
+
+def stop_capture() -> dict:
+    """Stop the running capture daemon (verifies the PID is really ours)."""
+    p = proj.load()
+    if p is None:
+        return {"error": "no project — use define_target first"}
+    return cap.stop(p)
+
+
+def capture_status() -> dict:
+    """Check the capture daemon: running?, frames kept, how many await review."""
+    p = proj.load()
+    if p is None:
+        return {"error": "no project — use define_target first"}
+    return cap.status(p)
+
+
+def review_captures(limit: int = 12) -> dict:
+    """List captured candidates awaiting review (pulls any cloud-only ones down).
+
+    Walk the user through them one at a time — 'is THIS your squirrel?' —
+    naming each file path so they can look at it, then record their answer
+    with label_capture.
+
+    Args:
+        limit: Max candidates to return (1-50).
+    """
+    p = proj.load()
+    if p is None:
+        return {"error": "no project — use define_target first"}
+    try:
+        return cap.review(p, limit)
+    except Exception as e:  # noqa: BLE001 — surface as data, agent decides next step
+        return {"error": str(e)}
+
+
+def label_capture(name: str, label: str) -> dict:
+    """Record the user's verdict on one captured candidate.
+
+    'positive' files it as a target example; 'negative' files it as a HARD
+    negative (the detector was unsure about it — exactly what fixes
+    over-prediction); 'discard' deletes it. After labeling a batch, offer to
+    retrain with dispatch_training.
+
+    Args:
+        name: The capture filename as returned by review_captures.
+        label: 'positive', 'negative', or 'discard'.
+    """
+    p = proj.load()
+    if p is None:
+        return {"error": "no project — use define_target first"}
+    try:
+        return cap.label(p, name, label)
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}
+
+
 def dispatch_training() -> dict:
     """Run the training job (DINOv2 embeddings + small classifier head).
 
@@ -143,7 +218,8 @@ def deploy_surveillance(camera: str = "0") -> dict:
     live with the reviewed accuracy.
 
     Args:
-        camera: Webcam index like '0', or a directory path to watch for images.
+        camera: Camera spec — 'webcam:0' (or '0'), 'folder:/path',
+            'rtsp://…', or 'file:clip.mp4'.
     """
     p = proj.load()
     if p is None:
@@ -184,13 +260,20 @@ root_agent = Agent(
         "hard for IN-DOMAIN negatives via capture_examples — generic web "
         "backgrounds make the detector over-predict; photos of their actual "
         "empty scene are what fix that. Web images (fetch_web_examples) are an "
-        "acceptable fallback for positives only. Aim for 10+ images per class; "
-        "4 is the hard minimum. Check progress with dataset_status.\n"
+        "acceptable fallback for positives only. If the target won't pose on "
+        "demand, offer start_capture: a daemon that watches the camera and "
+        "keeps interesting frames (motion before a model exists, the "
+        "classifier's uncertain band after). Periodically review_captures and "
+        "walk the user through each candidate — 'is this your {target}?' — "
+        "recording answers with label_capture (yes → positive, no → hard "
+        "negative). Aim for 10+ images per class; 4 is the hard minimum. "
+        "Check progress with dataset_status and capture_status.\n"
         "3. TRAIN — call dispatch_training. It's a background job; report the "
         "holdout accuracy verbatim when it returns.\n"
         "4. REVIEW — interpret the number honestly (small holdout => coarse "
         "estimate). If accuracy is weak, recommend more/better examples — "
-        "usually more in-domain negatives — and retrain.\n"
+        "usually more in-domain negatives, which is exactly what the capture "
+        "loop harvests — and retrain.\n"
         "5. DEPLOY — describe what going live means (a local process watching "
         "the camera, alerting through the governed egress channel). Ask "
         "explicitly: 'go live?'. Only after a clear yes, call "
@@ -207,6 +290,11 @@ root_agent = Agent(
         capture_examples,
         import_examples,
         fetch_web_examples,
+        start_capture,
+        stop_capture,
+        capture_status,
+        review_captures,
+        label_capture,
         dispatch_training,
         deploy_surveillance,
         surveillance_status,
